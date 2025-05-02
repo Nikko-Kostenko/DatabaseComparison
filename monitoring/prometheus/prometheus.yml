@@ -15,7 +15,7 @@ scrape_configs:
       - targets: ['postgres-exporter:9187']
         labels:
           db_system: 'postgresql'
-          instance: 'postgres-15.4'
+          version: 'postgres-15.4'
           database: 'benchmark'
 
   # MySQL metrics
@@ -24,7 +24,7 @@ scrape_configs:
       - targets: ['mysql-exporter:9104']
         labels:
           db_system: 'mysql'
-          instance: 'mysql-8.0'
+          version: 'mysql-8.0'
           database: 'benchmark'
 
   # MariaDB metrics
@@ -33,7 +33,7 @@ scrape_configs:
       - targets: ['mariadb-exporter:9104']
         labels:
           db_system: 'mariadb'
-          instance: 'mariadb-10.11'
+          version: 'mariadb-10.11'
           database: 'benchmark'
 
   # DB2 metrics
@@ -42,5 +42,5 @@ scrape_configs:
       - targets: ['db2-exporter:9161']
         labels:
           db_system: 'db2'
-          instance: 'db2-11.5'
+          version: 'db2-11.5'
           database: 'benchmark'
