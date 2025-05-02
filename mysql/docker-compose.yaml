@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  database:
+    image: mysql:8.0
+    container_name: mysql-8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=mysql
+      - MYSQL_DATABASE=benchmark
+      - MYSQL_USER=mysql
+      - MYSQL_PASSWORD=mysql
+    ports:
+      - "3306:3306"
+    # No volume mount to ensure data is deleted on restart
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'          # Limit to 4 CPU cores
+          memory: 8G           # Limit to 8GB RAM
+        reservations:
+          cpus: '4.0'          # Reserve 4 CPU cores
+          memory: 8G           # Reserve 8GB RAM
+    networks:
+      - monitoring_network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # MySQL Exporter
+  exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: mysql-exporter-8.0
+    environment:
+      - DATA_SOURCE_NAME=root:mysql@(database:3306)/
+    ports:
+      - "9104:9104"
+    depends_on:
+      - database
+    networks:
+      - monitoring_network
+
+networks:
+  monitoring_network:
+    external: true
+    name: monitoring_default

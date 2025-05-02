@@ -1,0 +1,163 @@
+param(
+    [Parameter(Mandatory=$true)]
+    [ValidateSet("start", "stop", "register")]
+    [string]$Action,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$Version = "11.5.8.0",
+    
+    [Parameter(Mandatory=$false)]
+    [string]$TestRun = "run-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+)
+
+# Configuration
+$EngineType = "db2"
+$ExporterPort = "9709"
+$HostPort = "50000"
+$BaseDir = $PSScriptRoot
+$ComposeFile = Join-Path $BaseDir "$EngineType.yaml"
+$AddEngineScript = Join-Path $BaseDir "..\add-engine.ps1"
+
+function Start-DB2DB {
+    param (
+        [string]$DbVersion,
+        [string]$TestRunId
+    )
+    
+    Write-Host "Creating $EngineType.yaml configuration file..." -ForegroundColor Cyan
+    
+    # Create the compose file with the current version
+    $ComposeContent = @"
+version: '3.8'
+
+services:
+  # IBM Db2 Database
+  database:
+    image: ibmcom/db2:$DbVersion
+    container_name: db2-$DbVersion
+    privileged: true  # Required for Db2
+    environment:
+      - LICENSE=accept
+      - DB2INST1_PASSWORD=password
+      - DBNAME=benchmark
+      - BLU=false
+      - ENABLE_ORACLE_COMPATIBILITY=false
+      - ARCHIVE_LOGS=false
+      # Important: Set this to false for ephemeral data
+      - PERSISTENT_HOME=false
+    ports:
+      - "$HostPort:50000"
+    # No volume mount to ensure data is deleted on restart
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'          # Limit to 4 CPU cores
+          memory: 8G           # Limit to 8GB RAM
+        reservations:
+          cpus: '4.0'          # Reserve 4 CPU cores
+          memory: 8G           # Reserve 8GB RAM
+    networks:
+      - monitoring_network
+
+  # Db2 Exporter
+  exporter:
+    image: ozlerhakan/db2-prometheus-exporter:latest
+    container_name: db2-exporter-$DbVersion
+    environment:
+      - DB2_DSN=DATABASE=benchmark;HOSTNAME=database;PORT=50000;PROTOCOL=TCPIP;UID=db2inst1;PWD=password
+    ports:
+      - "$ExporterPort:9709"
+    depends_on:
+      - database
+    networks:
+      - monitoring_network
+
+networks:
+  monitoring_network:
+    external: true
+    name: monitoring_default
+"@
+    
+    # Write the compose file
+    $ComposeContent | Out-File -FilePath $ComposeFile -Encoding utf8
+    
+    Write-Host "Starting DB2 version $DbVersion..." -ForegroundColor Cyan
+    
+    # Start the container
+    docker-compose -f $ComposeFile up -d
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error starting DB2." -ForegroundColor Red
+        return $false
+    }
+    
+    # Register with Prometheus
+    if (Test-Path $AddEngineScript) {
+        & $AddEngineScript -EngineName $EngineType -Version $DbVersion -Port $ExporterPort -TestRun $TestRunId
+    } else {
+        Write-Host "Warning: add-engine.ps1 not found at $AddEngineScript" -ForegroundColor Yellow
+        Write-Host "Please register the engine manually with Prometheus." -ForegroundColor Yellow
+    }
+    
+    Write-Host "DB2 version $DbVersion started successfully." -ForegroundColor Green
+    Write-Host "Connection Information:" -ForegroundColor Cyan
+    Write-Host "  Host: localhost" -ForegroundColor Cyan
+    Write-Host "  Port: $HostPort" -ForegroundColor Cyan
+    Write-Host "  Username: db2inst1" -ForegroundColor Cyan
+    Write-Host "  Password: password" -ForegroundColor Cyan
+    Write-Host "  Database: benchmark" -ForegroundColor Cyan
+    Write-Host "Note: DB2 may take a few minutes to fully initialize." -ForegroundColor Yellow
+    
+    return $true
+}
+
+function Stop-DB2DB {
+    if (-not (Test-Path $ComposeFile)) {
+        Write-Host "Error: Compose file not found: $ComposeFile" -ForegroundColor Red
+        return $false
+    }
+    
+    Write-Host "Stopping DB2..." -ForegroundColor Cyan
+    
+    # Stop the database and exporter
+    docker-compose -f $ComposeFile down
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error stopping DB2." -ForegroundColor Red
+        return $false
+    }
+    
+    Write-Host "DB2 stopped successfully." -ForegroundColor Green
+    return $true
+}
+
+function Register-DB2DB {
+    param (
+        [string]$DbVersion,
+        [string]$TestRunId
+    )
+    
+    if (-not (Test-Path $AddEngineScript)) {
+        Write-Host "Error: add-engine.ps1 not found at $AddEngineScript" -ForegroundColor Red
+        return $false
+    }
+    
+    Write-Host "Registering DB2 with Prometheus..." -ForegroundColor Cyan
+    & $AddEngineScript -EngineName $EngineType -Version $DbVersion -Port $ExporterPort -TestRun $TestRunId
+    
+    Write-Host "DB2 version $DbVersion registered with Prometheus." -ForegroundColor Green
+    return $true
+}
+
+# Main script execution
+switch ($Action.ToLower()) {
+    "start" {
+        Start-DB2DB -DbVersion $Version -TestRunId $TestRun
+    }
+    "stop" {
+        Stop-DB2DB
+    }
+    "register" {
+        Register-DB2DB -DbVersion $Version -TestRunId $TestRun
+    }
+}

@@ -1,0 +1,46 @@
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # PostgreSQL metrics
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          db_system: 'postgresql'
+          instance: 'postgres-15.4'
+          database: 'benchmark'
+
+  # MySQL metrics
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql-exporter:9104']
+        labels:
+          db_system: 'mysql'
+          instance: 'mysql-8.0'
+          database: 'benchmark'
+
+  # MariaDB metrics
+  - job_name: 'mariadb'
+    static_configs:
+      - targets: ['mariadb-exporter:9104']
+        labels:
+          db_system: 'mariadb'
+          instance: 'mariadb-10.11'
+          database: 'benchmark'
+
+  # DB2 metrics
+  - job_name: 'db2'
+    static_configs:
+      - targets: ['db2-exporter:9161']
+        labels:
+          db_system: 'db2'
+          instance: 'db2-11.5'
+          database: 'benchmark'

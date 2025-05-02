@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15.4
+    container_name: postgres-15.4
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=benchmark
+    ports:
+      - "5432:5432"
+    # No volume mount to ensure data is deleted on restart
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'          # Limit to 4 CPU cores
+          memory: 8G           # Limit to 8GB RAM
+        reservations:
+          cpus: '4.0'          # Reserve 4 CPU cores
+          memory: 8G           # Reserve 8GB RAM
+    networks:
+      - monitoring_network
+
+  # PostgreSQL Exporter
+  exporter:
+    image: wrouesnel/postgres_exporter:latest
+    container_name: postgres-exporter-15.4
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:postgres@database:5432/postgres?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      - database
+    networks:
+      - monitoring_network
+
+networks:
+  monitoring_network:
+    external: true
+    name: monitoring_default
