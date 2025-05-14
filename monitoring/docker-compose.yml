@@ -44,7 +44,6 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
-      # WSL2-specific: Comment out cgroup mount if it causes issues
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     devices:
       - /dev/kmsg
