@@ -1,4 +1,3 @@
-
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -36,14 +35,24 @@ services:
     networks:
       - monitoring_network
 
-  # Example test engine container
-  # test-engine:
-  #   image: your-test-engine:version
-  #   container_name: engine-name-version
-  #   # Add your specific engine configuration here
-  #   # Mount any necessary volumes
-  #   # Environment variables for your test engine
-  #   # Expose ports as needed
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    restart: unless-stopped
+    networks:
+      - monitoring_network
+
 
 volumes:
   prometheus_data:

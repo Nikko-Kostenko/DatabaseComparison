@@ -9,6 +9,10 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
   # PostgreSQL metrics
   - job_name: 'postgresql'
     static_configs:
